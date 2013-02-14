@@ -8,7 +8,14 @@ import scalaz.syntax.all._
 import scalaz.syntax.std.all._
 
 object endodsl {
-  case class Task(name: String)
+  case class Task(name: String) {
+    def dependsOn(on: Task): Writer[Endo[Project], Task] = {
+      for {
+        _ <- tell(((p: Project) => withDependency(this, on, p)).endo)
+      } yield this
+    }
+  }
+
   case class Project(name: String, startDate: java.util.Date, endDate: Option[java.util.Date] = None, 
                      tasks: List[Task] = List(), deps: List[(Task, Task)] = List())
 
@@ -19,12 +26,6 @@ object endodsl {
     val t = Task(n)
     for {
       _ <- tell(((p: Project) => withTask(t, p)).endo)
-    } yield t
-  }
-
-  def dependsOn(t: Task, on: Task): Writer[Endo[Project], Task] = {
-    for {
-      _ <- tell(((p: Project) => withDependency(t, on, p)).endo)
     } yield t
   }
 
@@ -42,12 +43,11 @@ object Main {
       for {
         a <- task("study requirements")
         b <- task("do analysis")
-        _ <- dependsOn(b, a)
+        _ <- b dependsOn a
         c <- task("design & code")
-        _ <- dependsOn(c, b)
-        d <- dependsOn(c, a)
+        _ <- c dependsOn b
+        d <- c dependsOn a
       } yield d
     }
   println(p)
-    
 }
