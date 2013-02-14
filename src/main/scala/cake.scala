@@ -1,3 +1,5 @@
+package net.debasishg.snippet.cake
+
 import java.util.{Date, Calendar}
 object cake {
 

@@ -1,9 +1,9 @@
 import sbt._
 import Keys._
 
-object CakeProject extends Build
+object SnipProject extends Build
 {
-  lazy val root = Project("cake", file(".")) settings(coreSettings : _*)
+  lazy val root = Project("snip", file(".")) settings(coreSettings : _*)
 
   lazy val commonSettings: Seq[Setting[_]] = Seq(
     organization := "net.debasishg",
@@ -14,14 +14,16 @@ object CakeProject extends Build
   )
 
   lazy val coreSettings = commonSettings ++ Seq(
-    name := "cake",
+    name := "snip",
 
     libraryDependencies <<= scalaVersion { v =>
     if (v contains "2.10")
       Seq(
         "org.scala-lang" % "scala-reflect" % "2.10.0",
         "junit"              % "junit"               % "4.8.1"   % "test",
-        "org.scalatest"      % "scalatest_2.10.0"    % "2.0.M5"  % "test")
+        "org.scalatest"      % "scalatest_2.10.0"    % "2.0.M5"  % "test",
+        "org.scalaz"         % "scalaz-core_2.10"    % "7.0.0-M7",
+        "org.scalaz"         % "scalaz-effect_2.10"  % "7.0.0-M7")
     else
       Seq(
         "junit"          % "junit"         % "4.8.1"  % "test",
@@ -39,7 +41,7 @@ object CakeProject extends Build
     publishArtifact in Test := false,
     pomIncludeRepository := { repo => false },
     pomExtra := (
-      <url>https://github.com/debasishg/scala-redis</url>
+      <url>https://github.com/debasishg/scala-snippets</url>
       <licenses>
         <license>
           <name>Apache 2.0 License</name>
@@ -49,7 +51,7 @@ object CakeProject extends Build
       </licenses>
       <scm>
         <url>git@github.com:debasishg/scala-redis.git</url>
-        <connection>scm:git:git@github.com:debasishg/scala-redis.git</connection>
+        <connection>scm:git:git@github.com:debasishg/scala-snippets.git</connection>
       </scm>
       <developers>
         <developer>
