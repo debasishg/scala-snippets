@@ -8,9 +8,8 @@ object SnipProject extends Build
   lazy val commonSettings: Seq[Setting[_]] = Seq(
     organization := "net.debasishg",
     version := "0.0.1",
-    scalaVersion := "2.10.0",
-    crossScalaVersions := Seq("2.10", "2.9.2", "2.9.1"),
-    scalacOptions ++= Seq("-deprecation", "-unchecked")
+    scalaVersion := "2.10.3",
+    scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-language:postfixOps")
   )
 
   lazy val coreSettings = commonSettings ++ Seq(
@@ -19,11 +18,11 @@ object SnipProject extends Build
     libraryDependencies <<= scalaVersion { v =>
     if (v contains "2.10")
       Seq(
-        "org.scala-lang" % "scala-reflect" % "2.10.0",
+        "org.scala-lang" % "scala-reflect" % "2.10.3",
         "junit"              % "junit"               % "4.8.1"   % "test",
         "org.scalatest"      % "scalatest_2.10.0"    % "2.0.M5"  % "test",
-        "org.scalaz"         % "scalaz-core_2.10"    % "7.0.0-M7",
-        "org.scalaz"         % "scalaz-effect_2.10"  % "7.0.0-M7")
+        "org.scalaz"         % "scalaz-core_2.10"    % "7.1.0-M6",
+        "org.scalaz"         % "scalaz-effect_2.10"  % "7.1.0-M6")
     else
       Seq(
         "junit"          % "junit"         % "4.8.1"  % "test",
