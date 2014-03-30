@@ -26,14 +26,13 @@ object specifications {
 
   case class Customer(custId: String, name: String, category: Int)
 
-  def process(order: Order) = {
+  def isReadyForFulfilment(order: Order) = {
     val s = for {
 
       _ <- validate
       _ <- approve
-      _ <- applyPromotions(order.customer)
-      _ <- checkInventory
-      c <- checkOut
+      _ <- checkCustomerStatus(order.customer)
+      c <- checkInventory
 
     } yield c
     s(order)
@@ -48,18 +47,12 @@ object specifications {
     right(true)
   }
 
-  private def applyPromotions(customer: Customer) = ReaderTStatus[Order, Boolean] {case order =>
-    println("promotions applied")
+  private def checkCustomerStatus(customer: Customer) = ReaderTStatus[Order, Boolean] {case order =>
     right(true)
   }
 
   private def checkInventory = ReaderTStatus[Order, Boolean] {case order =>
     println("inventory checked")
-    right(true)
-  }
-
-  private def checkOut = ReaderTStatus[Order, Boolean] {case order =>
-    println("checked out")
     right(true)
   }
 }
