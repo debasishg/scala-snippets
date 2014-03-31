@@ -38,20 +38,20 @@ object specifications {
     s(order)
   }
 
-  private def validate = ReaderTStatus[Order, Boolean] {case order =>
+  private def validate = ReaderTStatus[Order, Boolean] {order =>
     if (order.lineItems isEmpty) left(s"Validation failed for order $order") else right(true)
   }
 
-  private def approve = ReaderTStatus[Order, Boolean] {case order =>
+  private def approve = ReaderTStatus[Order, Boolean] {order =>
     println("approved")
     right(true)
   }
 
-  private def checkCustomerStatus(customer: Customer) = ReaderTStatus[Order, Boolean] {case order =>
+  private def checkCustomerStatus(customer: Customer) = ReaderTStatus[Order, Boolean] {order =>
     right(true)
   }
 
-  private def checkInventory = ReaderTStatus[Order, Boolean] {case order =>
+  private def checkInventory = ReaderTStatus[Order, Boolean] {order =>
     println("inventory checked")
     right(true)
   }

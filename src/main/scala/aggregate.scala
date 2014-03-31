@@ -29,10 +29,15 @@ object aggregate {
   case object Placed extends OrderStatus
   case object Validated extends OrderStatus
 
+  case class Address(number: String, street: String, city: String, zip: String)
+  case class ShipTo(name: String, address: Address)
+
   case class Order(orderNo: String, orderDate: Date, customer: Customer, 
-    lineItems: Vector[LineItem], status: OrderStatus = Placed)
+    lineItems: Vector[LineItem], shipTo: ShipTo, status: OrderStatus = Placed)
 
-
+  /**
+   * Specifications
+   */
   def isReadyForFulfilment(order: Order) = {
     val s = for {
 
@@ -45,34 +50,27 @@ object aggregate {
     s(order)
   }
 
-  private def validate = ReaderTStatus[Order, Boolean] {case order =>
+  private def validate = ReaderTStatus[Order, Boolean] {order =>
     if (order.lineItems isEmpty) left(s"Validation failed for order $order") else right(true)
   }
 
-  private def approve = ReaderTStatus[Order, Boolean] {case order =>
+  private def approve = ReaderTStatus[Order, Boolean] {order =>
     println("approved")
     right(true)
   }
 
-  private def applyPromotions(customer: Customer) = ReaderTStatus[Order, Boolean] {case order =>
-    println("promotions applied")
+  private def checkCustomerStatus(customer: Customer) = ReaderTStatus[Order, Boolean] {order =>
     right(true)
   }
 
-  private def checkCustomerStatus(customer: Customer) = ReaderTStatus[Order, Boolean] {case order =>
-    right(true)
-  }
-
-  private def checkInventory = ReaderTStatus[Order, Boolean] {case order =>
+  private def checkInventory = ReaderTStatus[Order, Boolean] {order =>
     println("inventory checked")
     right(true)
   }
 
-  private def checkOut = ReaderTStatus[Order, Boolean] {case order =>
-    println("checked out")
-    right(true)
-  }
-
+  /**
+   * lens definitions for update of aggregate root
+   */
   val orderStatus = Lens.lensu[Order, OrderStatus] (
     (o, value) => o.copy(status = value),
     _.status
@@ -96,7 +94,25 @@ object aggregate {
   def lineItemValues(i: Int) = ~lineItemValue compose vectorNthPLens(i)
   def lineItemDiscounts(i: Int) = ~lineItemDiscount compose vectorNthPLens(i)
 
-  def valueOrder(order: Order): Order = {
+  val orderShipTo = Lens.lensu[Order, ShipTo] (
+    (o, sh) => o.copy(shipTo = sh),
+    _.shipTo
+  )
+
+  val shipToAddress = Lens.lensu[ShipTo, Address] (
+    (sh, add) => sh.copy(address = add),
+    _.address
+  )
+
+  val addressToCity = Lens.lensu[Address, String] (
+    (add, c) => add.copy(city = c),
+    _.city
+  )
+
+  // def orderShipToCity = orderShipTo >=> shipToAddress >=> addressToCity
+  def orderShipToCity = orderShipTo andThen shipToAddress andThen addressToCity
+  
+  def valueOrder: Order => Order = {order =>
     orderLineItems.set(
       order,
       setLineItemValues(order.lineItems)
@@ -110,7 +126,7 @@ object aggregate {
     }
   }
 
-  def applyDiscounts(order: Order): Order = {
+  def applyDiscounts: Order => Order = {order =>
     orderLineItems.set(
       order,
       setLineItemValues(order.lineItems)
@@ -130,5 +146,9 @@ object aggregate {
 
   private def discount(item: Item, customer: Customer) = {
     BigDecimal(5).some
+  }
+
+  def process(order: Order) = {
+    applyDiscounts(valueOrder(orderStatus.set(order, Validated)))
   }
 }
