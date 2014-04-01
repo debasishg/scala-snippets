@@ -8,6 +8,7 @@ import PLens._
 
 object aggregate {
   type ValidationStatus[S] = \/[String, S]
+  type ProcessingStatus[S] = \/[String, S]
 
   type ReaderTStatus[A, S] = ReaderT[ValidationStatus, A, S]
 
@@ -33,7 +34,7 @@ object aggregate {
   case class ShipTo(name: String, address: Address)
 
   case class Order(orderNo: String, orderDate: Date, customer: Customer, 
-    lineItems: Vector[LineItem], shipTo: ShipTo, status: OrderStatus = Placed)
+    lineItems: Vector[LineItem], shipTo: ShipTo, netOrderValue: Option[BigDecimal] = None, status: OrderStatus = Placed)
 
   /**
    * Specifications
@@ -109,35 +110,55 @@ object aggregate {
     _.city
   )
 
-  // def orderShipToCity = orderShipTo >=> shipToAddress >=> addressToCity
   def orderShipToCity = orderShipTo andThen shipToAddress andThen addressToCity
   
-  def valueOrder: Order => Order = {order =>
-    orderLineItems.set(
+  def valueOrder = Kleisli[ProcessingStatus, Order, Order] {order =>
+    val o = orderLineItems.set(
       order,
       setLineItemValues(order.lineItems)
     )
+    o.lineItems.map(_.value).sequenceU match {
+      case Some(_) => right(o)
+      case _ => left("Missing value for items")
+    }
   }
 
   private def setLineItemValues(lis: Vector[LineItem]) = {
     (0 to lis.length - 1).foldLeft(lis) {(s, i) => 
       val li = lis(i)
-      lineItemValues(i).set(s, unitPrice(li.item).map(_ * li.quantity)).getOrElse(Vector.empty[LineItem])
+      lineItemValues(i).set(s, unitPrice(li.item).map(_ * li.quantity)).getOrElse(s)
     }
   }
 
-  def applyDiscounts: Order => Order = {order =>
-    orderLineItems.set(
+  def applyDiscounts = Kleisli[ProcessingStatus, Order, Order] {order =>
+    val o = orderLineItems.set(
       order,
       setLineItemValues(order.lineItems)
     )
+    o.lineItems.map(_.discount).sequenceU match {
+      case Some(_) => right(o)
+      case _ => left("Missing discount for items")
+    }
   }
 
   private def setLineItemDiscounts(lis: Vector[LineItem], customer: Customer) = {
     (0 to lis.length - 1).foldLeft(lis) {(s, i) => 
       val li = lis(i)
-      lineItemDiscounts(i).set(s, discount(li.item, customer)).getOrElse(Vector.empty[LineItem])
+      lineItemDiscounts(i).set(s, discount(li.item, customer)).getOrElse(s)
     }
+  }
+
+  val orderNetValue = Lens.lensu[Order, Option[BigDecimal]] (
+    (o, v) => o.copy(netOrderValue = v),
+    _.netOrderValue
+  )
+
+  def checkOut = Kleisli[ProcessingStatus, Order, Order] {order =>
+
+    val netOrderValue = order.lineItems.foldLeft(BigDecimal(0).some) {(s, i) => 
+      s |+| (i.value |+| i.discount.map(d => Tags.Multiplication(BigDecimal(-1)) |+| Tags.Multiplication(d)))
+    }
+    right(orderNetValue.set(order, netOrderValue))
   }
 
   private def unitPrice(item: Item): Option[BigDecimal] = {
@@ -149,6 +170,6 @@ object aggregate {
   }
 
   def process(order: Order) = {
-    applyDiscounts(valueOrder(orderStatus.set(order, Validated)))
+    (valueOrder andThen applyDiscounts andThen checkOut) =<< right(orderStatus.set(order, Validated))
   }
 }
